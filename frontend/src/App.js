@@ -1,90 +1,221 @@
-// O arquivo 'src/App.js' do seu projeto React
-// (Exatamente o mesmo código de antes)
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
+import AsyncSelect from 'react-select/async'; 
+import './App.css'; 
+// Ícone de Download trocado por Share
+import { FiTrendingUp, FiRefreshCw, FiShare2 } from 'react-icons/fi'; 
+import html2canvas from 'html2canvas';
 
 function App() {
-    const [tickerA, setTickerA] = useState('');
-    const [tickerB, setTickerB] = useState('');
+    const [selectedA, setSelectedA] = useState(null); 
+    const [selectedB, setSelectedB] = useState(null);
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const resultRef = useRef(null);
+
+    const loadOptions = (inputValue, callback) => {
+        if (!inputValue || inputValue.length < 2) { 
+            callback([]);
+            return;
+        }
+        axios.get('http://localhost:3001/api/search', { params: { q: inputValue } })
+            .then(response => {
+                callback(response.data);
+            })
+            .catch(() => {
+                callback([]); 
+            });
+    };
+
     const handleCompare = async () => {
+        if (!selectedA || !selectedB) {
+            setError('Você precisa selecionar as duas empresas.');
+            return;
+        }
         setLoading(true);
         setError('');
         setResult(null);
 
         try {
-            // 1. Chamar o SEU backend (que agora usa Alpha Vantage)
             const response = await axios.get('http://localhost:3001/api/compare', {
-                params: {
-                    tickerA: tickerA,
-                    tickerB: tickerB
-                }
+                params: { tickerA: selectedA.value, tickerB: selectedB.value }
             });
             setResult(response.data);
         } catch (err) {
-            // 2. Tratar erros (seja do backend ou da API)
             if (err.response && err.response.data && err.response.data.error) {
-                setError(err.response.data.error); // Mostra o erro vindo do backend
+                setError(err.response.data.error);
             } else {
                 setError('Não foi possível conectar ao servidor.');
             }
-            console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
+    const handleNewSearch = () => {
+        setResult(null);
+        setError('');
+        setSelectedA(null);
+        setSelectedB(null);
+    };
+
+    const handleShareImage = async () => {
+        if (!resultRef.current) return;
+
+        const element = resultRef.current;
+        const originalBg = element.style.backgroundColor;
+        
+        element.style.backgroundColor = '#222'; 
+
+        try {
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#222',
+            });
+
+            element.style.backgroundColor = originalBg; 
+
+            const image = canvas.toDataURL('image/png');
+            
+            // --- Lógica de Compartilhamento/Download ---
+            // Tenta usar a API de Share moderna
+            if (navigator.share) {
+                const blob = await (await fetch(image)).blob();
+                const file = new File([blob], `comparacao_${result.tickerA}_vs_${result.tickerB}.png`, { type: 'image/png' });
+                await navigator.share({
+                    title: `Comparação ${result.tickerA} vs ${result.tickerB}`,
+                    files: [file],
+                });
+            } else {
+                // Se não puder, faz o download (fallback)
+                const link = document.createElement('a');
+                link.href = image;
+                link.download = `comparacao_${result.tickerA}_vs_${result.tickerB}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+        } catch (err) {
+            console.error("Erro ao compartilhar/gerar imagem:", err);
+            // Fallback para download se o share falhar
+            if (err.name !== 'AbortError') {
+                setError("Falha ao compartilhar. Tentando baixar a imagem...");
+                const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#222' });
+                const image = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = image;
+                link.download = `comparacao_${result.tickerA}_vs_${result.tickerB}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+    };
+
     return (
-        <div style={{ padding: '20px', fontFamily: 'Arial', maxWidth: '600px', margin: 'auto' }}>
-            <h1>Comparador de Market Cap (Alpha Vantage)</h1>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div>
-                    <label>Se a Empresa A: </label>
-                    <input 
-                        type="text" 
-                        placeholder="Ex: PETR4" 
-                        value={tickerA}
-                        onChange={(e) => setTickerA(e.target.value)} 
-                        style={{ padding: '5px' }}
+        <div className="app-container">
+            <div className="card">
+                <h1>Comparador de Market Cap</h1>
+                
+                <div className="form-group">
+                    <label>Se a Empresa A:</label>
+                    <AsyncSelect
+                        key={selectedA ? selectedA.value : 'select-a'}
+                        placeholder="Nome ou Ticker (ex: Petrobras)"
+                        loadOptions={loadOptions}
+                        onChange={setSelectedA}
+                        value={selectedA}
+                        className="search-select"
+                        classNamePrefix="select"
                     />
                 </div>
-                <div>
-                    <label>tivesse o valor de mercado da Empresa B: </label>
-                    <input 
-                        type="text" 
-                        placeholder="Ex: MGLU3"
-                        value={tickerB}
-                        onChange={(e) => setTickerB(e.target.value)} 
-                        style={{ padding: '5px' }}
+
+                <div className="form-group">
+                    <label>tivesse o valor de mercado da Empresa B:</label>
+                    <AsyncSelect
+                        key={selectedB ? selectedB.value : 'select-b'}
+                        placeholder="Nome ou Ticker (ex: Vale)"
+                        loadOptions={loadOptions}
+                        onChange={setSelectedB}
+                        value={selectedB}
+                        className="search-select"
+                        classNamePrefix="select"
                     />
                 </div>
+                
+                <button onClick={handleCompare} disabled={loading} className="calculate-btn">
+                    {loading ? 'Calculando...' : 'Calcular'}
+                </button>
+
+                {error && (
+                    <div className="error-message">
+                        <strong>Erro:</strong> {error}
+                    </div>
+                )}
+
+                {result && (
+                    <div className="result-container-wrapper">
+                        <div className="result-container" ref={resultRef}> 
+                            
+                            <h2>{result.longNameA} ({result.tickerA})</h2>
+                            <h2 className="vs">vs</h2>
+                            <h2>{result.longNameB} ({result.tickerB})</h2>
+                            
+                            <div className="price-info">
+                                <div>
+                                    <span className="price-label">Preço Atual ({result.tickerA})</span>
+                                    <strong className="price-value">{Number(result.currentPriceA).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                                </div>
+                                <div>
+                                    <span className="price-label">Preço Atual ({result.tickerB})</span>
+                                    <strong className="price-value">{Number(result.currentPriceB).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                                </div>
+                            </div>
+
+                            <hr />
+
+                            <div className="hypothetical-result">
+                                <span className="result-label">Preço de {result.tickerA} com valor de mercado de {result.tickerB}:</span>
+                                
+                                <div className="result-final-price">
+                                    <strong className="hypothetical-price">
+                                        {Number(result.hypotheticalPriceA).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </strong>
+                                    
+                                    {(() => {
+                                        const currentPrice = result.currentPriceA;
+                                        const hypotheticalPrice = parseFloat(result.hypotheticalPriceA);
+                                        const percentChange = ((hypotheticalPrice / currentPrice) - 1) * 100;
+                                        const formattedPercent = percentChange.toFixed(2);
+                                        const percentClass = percentChange >= 0 ? 'percent-positive' : 'percent-negative';
+                                        
+                                        const icon = <FiTrendingUp style={{ transform: percentChange < 0 ? 'rotate(180deg)' : 'none' }} />;
+
+                                        return (
+                                            <span className={`percent-change ${percentClass}`}>
+                                                {icon} {formattedPercent}%
+                                            </span>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="result-actions">
+                            {/* --- (MUDANÇA AQUI) --- */}
+                            <button onClick={handleShareImage} className="share-image-btn">
+                                <FiShare2 className="button-icon" /> Compartilhar
+                            </button>
+                            <button onClick={handleNewSearch} className="nova-comparacao-btn">
+                                <FiRefreshCw className="button-icon" /> Nova Comparação
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
-            
-            <button onClick={handleCompare} disabled={loading} style={{ marginTop: '15px', padding: '10px' }}>
-                {loading ? 'Calculando...' : 'Calcular'}
-            </button>
-
-            {error && <p style={{ color: 'red', marginTop: '15px' }}><strong>Erro:</strong> {error}</p>}
-
-            {result && (
-                <div style={{ marginTop: '20px', backgroundColor: '#f0f0f0', padding: '15px', borderRadius: '5px' }}>
-                    <h2>Resultado:</h2>
-                    <p style={{ fontSize: '1.2em' }}>
-                        A <strong>{result.tickerA}</strong> teria uma cotação de 
-                        <strong> R$ {result.hypotheticalPriceA} </strong> 
-                        se tivesse o valor de mercado da <strong>{result.tickerB}</strong>.
-                    </p>
-                    <hr />
-                    <p><strong>Dados usados no cálculo:</strong></p>
-                    <p>Número de Ações ({result.tickerA}): {Number(result.sharesA).toLocaleString('pt-BR')}</p>
-                    <p>Valor de Mercado ({result.tickerB}): {Number(result.marketCapB).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                </div>
-            )}
         </div>
     );
 }

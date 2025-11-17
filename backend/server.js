@@ -1,98 +1,114 @@
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors'); // Para permitir a comunicação entre frontend e backend
+const cors = require('cors');
 const app = express();
 const PORT = 3001;
 
 app.use(cors());
 
-// --- Configuração da Alpha Vantage ---
-// ! COLOQUE SUA CHAVE AQUI
-const ALPHA_VANTAGE_API_KEY = 'FO827GQFXCRSVQ67'; 
-// ! ---------------------------------
+// --- Configuração da Brapi.dev ---
+const BRAPI_API_KEY = 'xvTQ6xPjwLqwP713uSrsB3'; // SUA CHAVE AQUI
+const BRAPI_BASE_URL = 'https://brapi.dev/api';
 
 /**
- * Função auxiliar que busca os dados fundamentalistas de um ticker na Alpha Vantage.
- * Esta única chamada retorna TANTO o MarketCap QUANTO o SharesOutstanding.
+ * Endpoint 1: Rota de Busca (Simplificada)
+ * Não envia mais logo ou website
  */
-async function getCompanyOverview(tickerWithSuffix) {
+app.get('/api/search', async (req, res) => {
+    const query = req.query.q;
+    if (!query || query.length < 2) return res.json([]); 
+
     try {
-        const response = await axios.get('https://www.alphavantage.co/query', {
-            params: {
-                function: 'OVERVIEW',
-                symbol: tickerWithSuffix,
-                apikey: ALPHA_VANTAGE_API_KEY
-            }
+        const response = await axios.get(`${BRAPI_BASE_URL}/quote/list`, {
+            params: { search: query, limit: 15, token: BRAPI_API_KEY }
         });
         
-        // Retorna o objeto JSON completo com os dados da empresa
-        return response.data;
+        // Simplificado: Apenas valor e rótulo
+        const suggestions = response.data.stocks.map(stock => ({
+            value: stock.stock, 
+            label: `${stock.name} (${stock.stock})` // Ex: "Petrobras (PETR4)"
+        }));
+        res.json(suggestions);
 
     } catch (error) {
-        console.error(`Erro ao buscar dados para ${tickerWithSuffix}:`, error.message);
-        return { 'Error Message': 'Falha ao conectar na API' }; // Retorna um objeto de erro
+        console.error("Erro na busca:", error.message);
+        res.status(500).json({ error: 'Erro ao buscar sugestões.' });
+    }
+});
+
+
+/**
+ * Helper: Busca dados da Brapi
+ */
+async function getBrapiQuote(ticker) {
+    try {
+        const response = await axios.get(`${BRAPI_BASE_URL}/quote/${ticker}`, {
+            params: { token: BRAPI_API_KEY }
+        });
+        if (response.data && response.data.results && response.data.results.length > 0) {
+            return response.data.results[0]; 
+        }
+        return { error: 'Ticker não encontrado na Brapi' };
+    } catch (error) {
+        return { error: 'Falha ao conectar na Brapi' };
     }
 }
 
-// O endpoint principal que o frontend vai chamar
+
+/**
+ * Endpoint 2: Rota de Comparação (Simplificada)
+ * Revertido para lógica Brapi e sem logos/website
+ */
 app.get('/api/compare', async (req, res) => {
     try {
-        const { tickerA, tickerB } = req.query; // Ex: tickerA=PETR4, tickerB=MGLU3
+        const { tickerA, tickerB } = req.query; 
 
         if (!tickerA || !tickerB) {
             return res.status(400).json({ error: 'Tickers A e B são obrigatórios.' });
         }
         
-        // Adiciona o sufixo .SA necessário para a B3
-        const tickerA_SA = tickerA.toUpperCase() + '.SA';
-        const tickerB_SA = tickerB.toUpperCase() + '.SA';
+        const dataA = await getBrapiQuote(tickerA.toUpperCase());
+        const dataB = await getBrapiQuote(tickerB.toUpperCase());
 
-        // 1. Buscar os dados (fazemos duas chamadas, uma para cada empresa)
-        const overviewA = await getCompanyOverview(tickerA_SA);
-        const overviewB = await getCompanyOverview(tickerB_SA);
+        if (dataA.error) return res.status(404).json({ error: dataA.error });
+        if (dataB.error) return res.status(404).json({ error: dataB.error });
 
-        // 2. Verificar se a API retornou erros
-        // (A API gratuita tem limite de 5 chamadas por minuto)
-        if (overviewA['Error Message'] || overviewB['Error Message']) {
-            return res.status(503).json({ error: 'Erro ao buscar dados na API. (Limite de 5 chamadas/minuto atingido?)' });
+        const marketCapA = dataA.marketCap;
+        const priceA = dataA.regularMarketPrice;
+        const marketCapB = dataB.marketCap;
+
+        if (!marketCapA || !priceA || !marketCapB) {
+            return res.status(404).json({ 
+                error: 'Dados incompletos (MarketCap ou Preço) não encontrados na Brapi.' 
+            });
         }
         
-        // 3. Extrair os dados que precisamos
-        const sharesA_str = overviewA.SharesOutstanding;
-        const marketCapB_str = overviewB.MarketCapitalization;
-
-        // 4. Verificar se os dados existem
-        if (!sharesA_str || !marketCapB_str || sharesA_str === "None" || marketCapB_str === "None") {
-            return res.status(404).json({ error: 'Dados fundamentalistas não encontrados. Verifique os tickers.' });
-        }
-        
-        // 5. Converter os dados (eles vêm como string) para números
-        const sharesA = parseFloat(sharesA_str);
-        const marketCapB = parseFloat(marketCapB_str);
-
-        if (sharesA === 0) {
-            return res.status(400).json({ error: 'Empresa A não possui ações em circulação.' });
+        if (priceA === 0) {
+            return res.status(400).json({ error: 'Preço da Empresa A é zero.' });
         }
 
-        // 6. Fazer o cálculo!
+        const sharesA = marketCapA / priceA;
         const hypotheticalPriceA = marketCapB / sharesA;
 
-        // 7. Enviar o resultado
+        // --- RESPOSTA SIMPLIFICADA (SEM LOGOS/WEBSITE) ---
         res.json({
-            tickerA: tickerA.toUpperCase(),
-            tickerB: tickerB.toUpperCase(),
-            sharesA: sharesA, // O número de ações da Empresa A
-            marketCapB: marketCapB, // O valor de mercado da Empresa B
-            hypotheticalPriceA: hypotheticalPriceA.toFixed(2) // O preço formatado
+            tickerA: dataA.symbol,
+            tickerB: dataB.symbol,
+            longNameA: dataA.longName || dataA.shortName,
+            longNameB: dataB.longName || dataB.shortName,
+            hypotheticalPriceA: hypotheticalPriceA.toFixed(2),
+            currentPriceA: dataA.regularMarketPrice,
+            currentPriceB: dataB.regularMarketPrice
+            // Campos de logo e website foram removidos
         });
 
     } catch (error) {
-        console.error(error);
+        console.error("Erro no /api/compare:", error);
         res.status(500).json({ error: 'Erro interno no servidor.' });
     }
 });
 
 app.listen(PORT, () => {
     console.log(`Backend rodando na porta ${PORT}`);
-    console.log(`Certifique-se de que sua API KEY da Alpha Vantage está no server.js`);
+    console.log(`>>> Servidor (Brapi-Only, SEM LOGOS) iniciado <<<`);
 });

@@ -1,38 +1,368 @@
-.App {
+/* ======================================= */
+/* Paleta de Cores e Fontes              */
+/* ======================================= */
+:root {
+  --bg-dark: #1a1a1a;
+  --bg-card: #282828;
+  --text-light: #f0f0f0;
+  --text-dark: #a0a0a0;
+  --border-light: #555;
+  --primary-color: #00ff7f; /* Verde limão vibrante */
+  --secondary-color: #ff007f; /* Rosa choque vibrante */
+  --error-color: #ff4757; /* Vermelho vibrante */
+}
+
+/* ======================================= */
+/* Animações (Keyframes)                 */
+/* ======================================= */
+
+/* Animação de brilho sutil para o card de resultado */
+@keyframes glow-subtle {
+  0%, 100% { box-shadow: 0 0 15px rgba(0, 255, 127, 0.3); } /* Brilho verde limão */
+  50% { box-shadow: 0 0 25px rgba(0, 255, 127, 0.5); }
+}
+
+/* Animação de pulso para percentual positivo */
+@keyframes pulse-positive {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+
+/* ======================================= */
+/* Estilo da Página (Monocromático Base) */
+/* ======================================= */
+body {
+  font-family: 'Inter', sans-serif; /* Fonte moderna */
+  background-color: var(--bg-dark);
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-light); /* Cor de texto padrão */
+}
+
+/* Título */
+h1 {
+  text-align: center;
+  color: var(--text-light);
+  margin-bottom: 30px;
+  font-size: 2.5em;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+hr {
+  border: 0;
+  border-top: 1px dashed var(--border-light); /* Linha tracejada moderna */
+  margin: 30px 0;
+}
+
+/* Ícones padrão (seta divisória) */
+.icon-base-color {
+  color: var(--text-dark);
+}
+
+/* ======================================= */
+/* O Card Principal (Moderno Minimalista) */
+/* ======================================= */
+.app-container {
+  max-width: 600px;
+  width: 100%;
+}
+
+.card {
+  background-color: var(--bg-card);
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-light);
+}
+
+/* ======================================= */
+/* Formulário (Busca Inteligente)        */
+/* ======================================= */
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+/* Estilizando o react-select para combinar com o tema escuro */
+.search-select .select__control {
+  background-color: #3a3a3a !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  min-height: 48px;
+}
+.search-select .select__control--is-focused {
+  border-color: var(--primary-color) !important; /* Borda chamativa no foco */
+  box-shadow: 0 0 0 2px rgba(0, 255, 127, 0.3) !important;
+}
+
+.search-select .select__placeholder {
+  color: var(--text-dark) !important;
+}
+.search-select .select__single-value {
+  color: var(--text-light) !important;
+}
+.search-select .select__input-container {
+  color: var(--text-light) !important;
+}
+
+.search-select .select__menu {
+  background-color: #3a3a3a !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--border-light);
+  overflow: hidden; /* Garante que os itens não escapem */
+}
+.search-select .select__option {
+  background-color: transparent !important;
+  color: var(--text-light) !important;
+  padding: 12px 15px;
+  transition: background-color 0.2s;
+}
+.search-select .select__option--is-focused {
+  background-color: rgba(0, 255, 127, 0.2) !important; /* Foco suave verde */
+}
+.search-select .select__option--is-selected {
+  background-color: rgba(0, 255, 127, 0.4) !important; /* Selecionado mais escuro */
+  color: #fff !important;
+}
+
+/* ======================================= */
+/* Botões                                */
+/* ======================================= */
+
+.calculate-btn {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.1em;
+  font-weight: bold;
+  color: var(--bg-dark); /* Texto escuro no botão claro */
+  background: var(--primary-color); /* Verde limão chamativo */
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 255, 127, 0.4);
+}
+
+.calculate-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 255, 127, 0.6);
+  filter: brightness(1.1); /* Brilho extra no hover */
+}
+
+.calculate-btn:disabled {
+  background: #555;
+  color: #bbb;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ======================================= */
+/* Mensagens de Erro                     */
+/* ======================================= */
+.error-message {
+  margin-top: 20px;
+  padding: 15px;
+  color: #fff;
+  font-weight: 500;
+  background-color: var(--error-color); /* Vermelho vibrante */
+  border: 1px solid var(--error-color);
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+}
+
+/* ================================================= */
+/* === RESULTADO (Monocromático com Foco de Cor) === */
+/* ================================================= */
+
+.result-container-wrapper {
+  margin-top: 30px;
+  animation: glow-subtle 4s infinite alternate; /* Brilho sutil */
+}
+
+.result-container {
+  background-color: #222; /* Fundo mais escuro para o resultado */
+  padding: 25px;
+  border-radius: 15px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Nomes das Empresas */
+.result-container h2 {
+  text-align: center;
+  margin: 0;
+  color: var(--text-light);
+  font-size: 1.3em;
+  font-weight: 600;
+  margin-top: 10px; /* Espaçamento no topo (sem logos) */
+}
+.result-container h2.vs {
+  font-size: 1em;
+  font-weight: 400;
+  color: var(--text-dark);
+  margin: 8px 0;
+}
+
+/* Preços Atuais */
+.price-info {
+  display: flex;
+  justify-content: space-around;
+  gap: 15px;
+  text-align: center;
+  margin-top: 25px;
+}
+
+.price-label {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-dark);
+  margin-bottom: 5px;
+}
+
+.price-value {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+/* Resultado Hipotético */
+.hypothetical-result {
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.result-label {
+  display: block;
+  font-size: 1em;
+  color: var(--text-dark);
+  margin-bottom: 15px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.result-final-price {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 12px;
+}
+
+.hypothetical-price {
+  font-size: 2.8em; /* Preço final grande */
+  font-weight: bold;
+  color: var(--primary-color); /* VERDE LIMAO */
+  text-shadow: 0 0 15px rgba(0, 255, 127, 0.5); /* Brilho no preço */
+}
+
+/* Percentual (Cores Vibrantes) */
+.percent-change {
+  font-size: 1.6em;
+  font-weight: bold;
+  padding: 8px 18px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.percent-positive {
+  color: var(--primary-color); /* Verde limão */
+  background-color: rgba(0, 255, 127, 0.15);
+  animation: pulse-positive 2s infinite alternate; /* Pulso no positivo */
+  border: 1px solid rgba(0, 255, 127, 0.3);
+}
+
+.percent-negative {
+  color: var(--secondary-color); /* Rosa choque */
+  background-color: rgba(255, 0, 127, 0.15);
+  border: 1px solid rgba(255, 0, 127, 0.3);
+}
+
+/* ======================================= */
+/* === NOVOS ESTILOS PARA AÇÕES DO RESULTADO === */
+/* ======================================= */
+
+.result-actions {
+  display: flex;
+  justify-content: space-between; /* Espaça os botões */
+  gap: 15px; /* Espaçamento entre eles */
+  margin-top: 25px;
+}
+
+/* --- Botão de Compartilhar (Destaque Principal) --- */
+.share-image-btn {
+  flex: 1; 
+  padding: 15px; /* Um pouco maior */
+  font-size: 1.1em; /* Texto maior */
+  font-weight: bold; /* Mais negrito */
+  color: #fff; /* Texto branco puro */
+  
+  /* Gradiente moderno e chamativo */
+  background: linear-gradient(135deg, #00c6ff, #0072ff); /* Azul claro para azul escuro */
+  border: none; /* Sem borda, o gradiente já é suficiente */
+  border-radius: 10px; /* Bordas mais suaves */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  gap: 12px; /* Mais espaço entre texto e ícone */
+  box-shadow: 0 5px 20px rgba(0, 114, 255, 0.4); /* Sombra mais intensa */
 }
 
-.App-link {
-  color: #61dafb;
+.share-image-btn:hover {
+  transform: translateY(-3px); /* Efeito de "levantar" */
+  box-shadow: 0 8px 25px rgba(0, 114, 255, 0.6); /* Sombra mais forte no hover */
+  filter: brightness(1.1); /* Um pouco mais brilhante */
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* Estilo do ícone dentro do botão */
+.share-image-btn .button-icon {
+    font-size: 1.3em; /* Ícone um pouco maior */
+}
+
+
+/* --- (MUDANÇA AQUI) Botão Nova Comparação (Destaque Secundário) --- */
+.nova-comparacao-btn {
+  flex: 1; 
+  padding: 15px; /* Mesma altura do botão de compartilhar */
+  margin-top: 0; 
+  font-size: 1.1em; /* Mesma fonte */
+  font-weight: bold; /* Mesmo peso */
+  color: var(--secondary-color); /* Cor do texto (Rosa) */
+  background: transparent; /* Fundo transparente */
+  border: 2px solid var(--secondary-color); /* Borda Rosa */
+  border-radius: 10px; /* Mesma borda */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.nova-comparacao-btn:hover {
+  background-color: var(--secondary-color); /* Preenche no hover */
+  color: var(--bg-dark); /* Texto escuro no hover */
+  box-shadow: 0 5px 20px rgba(255, 0, 127, 0.4); /* Sombra rosa */
+  transform: translateY(-3px);
+}
+
+.nova-comparacao-btn .button-icon {
+  font-size: 1.1em;
 }
